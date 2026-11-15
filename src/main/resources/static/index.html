@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP系统 - MRP模块</title>
+    <!-- Element Plus 样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* ----- 全局重置 ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-size: 15px;
+            background-color: #f0f2f6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ----- 登录页面专用样式（不与主界面冲突）----- */
+        .login-page {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-image: url('/background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+        .login-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(3px);
+        }
+        /* 登录页左上角 Logo */
+        .login-logo {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 60px;
+            border: 1px solid rgba(255,255,255,0.3);
+            z-index: 2;
+            transition: 0.3s;
+        }
+        .login-logo:hover {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.02);
+        }
+        .login-logo .logo-icon {
+            font-size: 28px;
+        }
+        .login-logo .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: 1px;
+        }
+        /* 登录卡片 */
+        .login-card {
+            width: 440px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 40px 36px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 2;
+            transition: transform 0.3s;
+            animation: fadeInUp 0.6s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec489a);
+            border-radius: 32px 32px 0 0;
+        }
+        .card-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .card-header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .card-header p {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        .input-group {
+            margin-bottom: 24px;
+        }
+        .input-group label {
+            display: block;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 44px 14px 44px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 60px;
+            font-size: 15px;
+            color: white;
+            transition: all 0.3s;
+        }
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+        }
+        .input-wrapper input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .input-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: rgba(255,255,255,0.7);
+        }
+        .password-toggle {
+            left: auto;
+            right: 18px;
+            cursor: pointer;
+        }
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0 28px;
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .forgot-link {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(255,255,255,0.5);
+        }
+        .forgot-link:hover {
+            color: white;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(95deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .login-btn:hover {
+            background: linear-gradient(95deg, #2563eb, #1d4ed8);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37,99,235,0.4);
+        }
+        .login-btn:active {
+            transform: translateY(1px);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+        }
+        .error-msg {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #ef4444;
+            padding: 12px;
+            border-radius: 12px;
+            color: #ffe0e0;
+            margin-bottom: 20px;
+            font-size: 13px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+
+        /* ----- 主界面样式（不与登录页冲突）----- */
+        .main-app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f0f2f6;
+        }
+        /* 顶栏 */
+        .main-header {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            padding: 0 28px;
+            line-height: 64px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .main-logo {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            letter-spacing: 1px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #475569;
+            font-weight: 500;
+        }
+        .logout-btn {
+            color: #ef4444;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 6px 12px;
+            border-radius: 40px;
+            background: #fef2f2;
+        }
+        .logout-btn:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        /* 主内容区 */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 20px;
+            gap: 20px;
+        }
+        /* 侧边栏 */
+        .main-sidebar {
+            width: 260px;
+            background: #ffffff;
+            border-radius: 24px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            flex-shrink: 0;
+        }
+        .main-sidebar .el-menu {
+            border-right: none;
+            background: transparent;
+            border-radius: 24px;
+            padding: 12px 0;
+        }
+        .main-sidebar .el-menu-item {
+            height: 52px;
+            line-height: 52px;
+            margin: 6px 16px;
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 15px;
+            color: #334155;
+            transition: all 0.25s ease;
+        }
+        .main-sidebar .el-menu-item:hover {
+            background: linear-gradient(95deg, #eef2ff 0%, #e0e7ff 100%);
+            color: #1e40af;
+            transform: translateX(3px);
+        }
+        .main-sidebar .el-menu-item.is-active {
+            background: linear-gradient(95deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+        }
+        /* 右侧内容区 */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            background: transparent;
+            border-radius: 24px;
+        }
+        /* 卡片样式 */
+        .card-box {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.02), 0 2px 4px rgba(0,0,0,0.02);
+            transition: box-shadow 0.2s;
+        }
+        .card-box:hover {
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+        }
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 18px;
+            color: #0f172a;
+        }
+        /* 表格美化 */
+        .el-table {
+            border-radius: 20px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        .el-table th.el-table__cell {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .el-table .el-table__row:hover {
+            background-color: #f1f5f9;
+        }
+        /* 警告条 */
+        .warning-bar {
+            background: #fffbeb;
+            border-left: 5px solid #f59e0b;
+            border-radius: 18px;
+            padding: 14px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #b45309;
+            font-weight: 500;
+        }
+        /* 按钮圆润 */
+        .el-button {
+            border-radius: 40px;
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+        .el-button--primary {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .el-button--primary:hover {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+        .el-dialog {
+            border-radius: 32px;
+        }
+        .el-dialog__header {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 20px 28px;
+        }
+        .el-dialog__body {
+            padding: 20px 28px;
+        }
+        .el-input__inner, .el-select .el-input__inner, .el-input-number .el-input__inner {
+            border-radius: 14px;
+        }
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* MRP矩阵视图样式 */
+        .mrp-matrix-page {
+            background: #f5f7fa;
+            min-height: 100%;
+        }
+        .mrp-matrix-card {
+            border-radius: 20px;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+        .mrp-matrix-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .net-req-cell {
+            background-color: #fef0f0 !important;
+        }
+        .planned-cell {
+            background-color: #f0f9eb !important;
+        }
+        .bold-val {
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- 登录界面 -->
+    <div v-if="!isLoggedIn" class="login-page">
+        <div class="login-logo">
+            <div class="logo-icon">🏭</div>
+            <div class="logo-text">ERP · MRP</div>
+        </div>
+        <div class="login-card">
+            <div class="card-header">
+                <h1>公司ERP系统</h1>
+            </div>
+            <div class="error-msg" v-if="loginError" style="display: block;">{{ loginError }}</div>
+            <form @submit.prevent="handleLogin">
+                <div class="input-group">
+                    <label>用户名 / 管理员账号</label>
+                    <div class="input-wrapper">
+                        <input type="text" v-model="loginForm.username" placeholder="请输入用户名" required>
+                        <span class="input-icon">👤</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>登录密码</label>
+                    <div class="input-wrapper">
+                        <input :type="passwordVisible ? 'text' : 'password'" v-model="loginForm.password" placeholder="请输入密码" required>
+                        <span class="input-icon password-toggle" @click="togglePasswordVisibility">
+                            {{ passwordVisible ? '🙈' : '👁️' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="options">
+                    <label class="remember-me">
+                        <input type="checkbox" v-model="rememberMe"> 记住密码
+                    </label>
+                    <a href="javascript:void(0)" class="forgot-link" @click="alert('请联系管理员重置密码')">忘记密码？</a>
+                </div>
+                <button type="submit" class="login-btn" :disabled="loggingIn">{{ loggingIn ? '登录中...' : '登录系统' }}</button>
+            </form>
+            <div class="footer">
+                <p>© 2026 ERP-MRP 演示系统 | 安全登录</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主界面（登录后） -->
+    <div v-else class="main-app">
+        <div class="main-header">
+            <div class="main-logo">ERP系统 · MRP模块</div>
+            <div class="user-info">
+                <span>{{ currentUser.username }}</span>
+                <span class="logout-btn" @click="handleLogout">退出登录</span>
+            </div>
+        </div>
+        <div class="main-layout">
+            <div class="main-sidebar">
+                <el-menu :default-active="activeMenu" @select="handleMenuSelect">
+                    <el-menu-item index="dashboard">仪表盘</el-menu-item>
+                    <el-menu-item index="material">物料主数据表</el-menu-item>
+                    <el-menu-item index="bom">BOM结构表</el-menu-item>
+                    <el-menu-item index="mps">主生产计划(MPS)表</el-menu-item>
+                    <el-menu-item index="mrp">MRP运算管理</el-menu-item>
+                    <el-menu-item index="mrp-matrix">MRP运算矩阵视图</el-menu-item>
+                    <el-menu-item index="result">订货计划表</el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <!-- 仪表盘 -->
+                <div v-if="activeMenu === 'dashboard'">
+                    <div class="card-box">
+                        <div class="page-title">系统概览</div>
+                        <el-descriptions :column="2" border>
+                            <el-descriptions-item label="物料总数">{{ materialsCount }}</el-descriptions-item>
+                            <el-descriptions-item label="BOM条目数">{{ bomsCount }}</el-descriptions-item>
+                            <el-descriptions-item label="MPS需求总数">{{ mpsCount }}</el-descriptions-item>
+                            <el-descriptions-item label="上次MRP运算时间">{{ lastMrpTime || '未运行' }}</el-descriptions-item>
+                        </el-descriptions>
+                        <el-divider></el-divider>
+                        <div style="margin-top: 20px;">
+                            <el-alert title="通用性说明" type="info" :closable="false">
+                                <p>您可以随时修改物料、BOM或主生产计划(MPS)，然后点击“执行MRP运算”，系统会自动重新计算出准确的订货计划。<br>
+                                例如：修改X第8周需求为500，或修改BOM中X对C的用量，重新运算即可看到变化。</p>
+                            </el-alert>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 物料管理 -->
+                <div v-if="activeMenu === 'material'">
+                    <div class="card-box">
+                        <div class="page-title">物料主数据表</div>
+                        <el-button type="primary" @click="openMaterialDialog(null)">+ 新增物料</el-button>
+                        <el-button type="success" @click="exportMaterials">导出Excel</el-button>
+                        <el-table :data="materials" border style="margin-top: 20px;">
+                            <el-table-column prop="materialCode" label="编码" width="100"></el-table-column>
+                            <el-table-column prop="materialName" label="名称" width="130"></el-table-column>
+                            <el-table-column prop="initStock" label="期初库存" width="100"></el-table-column>
+                            <el-table-column prop="safetyStock" label="安全库存" width="100"></el-table-column>
+                            <el-table-column prop="allocated" label="已分配量" width="100"></el-table-column>
+                            <el-table-column prop="lotRule" label="批量规则" width="100"></el-table-column>
+                            <el-table-column prop="lotSize" label="批量值" width="100"></el-table-column>
+                            <el-table-column prop="leadTime" label="提前期" width="100"></el-table-column>
+                            <el-table-column label="操作" width="150" fixed="right">
+                                <template #default="scope">
+                                    <el-button size="small" @click="openMaterialDialog(scope.row)">编辑</el-button>
+                                    <el-button size="small" type="danger" @click="deleteMaterial(scope.row.materialCode)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                </div>
+
+                <!-- BOM管理 -->
+                <div v-if="activeMenu === 'bom'">
+                    <div class="card-box">
+                        <div class="page-title">BOM结构</div>
+                        <el-button type="primary" @click="openBomDialog(null)">+ 新增BOM</el-button>
+                        <el-button type="success" @click="exportBoms">导出Excel</el-button>
+                        <el-table :data="boms" border style="margin-top: 20px;">
+                            <el-table-column prop="parentCode" label="父件编码"></el-table-column>
+                            <el-table-column prop="childCode" label="子件编码"></el-table-column>
+                            <el-table-column prop="qty" label="用量"></el-table-column>
+                            <el-table-column prop="level" label="层级"></el-table-column>
+                            <el-table-column label="操作" width="150">
+                                <template #default="scope">
+                                    <el-button size="small" @click="openBomDialog(scope.row)">编辑</el-button>
+                                    <el-button size="small" type="danger" @click="deleteBom(scope.row.id)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                </div>
+
+                <!-- MPS管理 -->
+                <div v-if="activeMenu === 'mps'">
+                    <div class="card-box">
+                        <div class="page-title">主生产计划 (MPS)</div>
+                        <div v-if="mpsChanged" class="warning-bar">
+                            <span>⚠️ 主生产计划已修改，请重新执行MRP运算以保证计划准确！</span>
+                            <el-button size="small" type="warning" @click="runMrp">立即重新运算</el-button>
+                        </div>
+                        <el-button type="primary" @click="openMpsDialog(null)">+ 新增MPS需求</el-button>
+                        <el-button type="success" @click="exportMps">导出Excel</el-button>
+                        <el-table :data="mpsList" border style="margin-top: 20px;">
+                            <el-table-column prop="materialCode" label="物料编码"></el-table-column>
+                            <el-table-column prop="period" label="需求周期"></el-table-column>
+                            <el-table-column prop="grossReq" label="毛需求量"></el-table-column>
+                            <el-table-column label="操作" width="150">
+                                <template #default="scope">
+                                    <el-button size="small" @click="openMpsDialog(scope.row)">编辑</el-button>
+                                    <el-button size="small" type="danger" @click="deleteMps(scope.row.id)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                </div>
+
+                <!-- MRP运算 -->
+                <div v-if="activeMenu === 'mrp'">
+                    <div class="card-box">
+                        <div class="page-title">MRP运算</div>
+                        <el-alert title="运行MRP前，请确保物料、BOM、MPS数据准确" type="warning" :closable="false" style="margin-bottom: 24px;"></el-alert>
+                        <el-button type="primary" :loading="mrpRunning" @click="runMrp" style="width: 200px;">执行MRP运算</el-button>
+                        <el-button type="success" @click="openMatrixView" style="margin-left: 12px;">查看MRP矩阵视图</el-button>
+                        <div v-if="mrpResultMsg" style="margin-top: 20px;">
+                            <el-alert :title="mrpResultMsg" type="success" :closable="false"></el-alert>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MRP运算矩阵视图 -->
+                <div v-if="activeMenu === 'mrp-matrix'" class="mrp-matrix-page">
+                    <div class="card-box mrp-matrix-card">
+                        <div class="page-title">MRP运算矩阵视图</div>
+                        <div class="mrp-matrix-header">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-weight: 500;">选择物料：</span>
+                                <el-select v-model="mrpMatrixMaterial" placeholder="请选择物料" style="width: 240px;" @change="loadMrpMatrixDetail">
+                                    <el-option v-for="m in materials" :key="m.materialCode" :label="m.materialCode + ' - ' + m.materialName" :value="m.materialCode"></el-option>
+                                </el-select>
+                                <el-button type="primary" @click="loadMrpMatrixDetail" :loading="mrpMatrixLoading" round>刷新数据</el-button>
+                            </div>
+                        </div>
+                        <div v-if="mrpMatrixMaterialName" style="margin-bottom: 16px; font-size: 16px; font-weight: 600; color: #1e293b;">
+                            物料 {{ mrpMatrixMaterial }} — {{ mrpMatrixMaterialName }} MRP 计算明细
+                        </div>
+                        <div v-if="mrpMatrixTransposed.length > 0" class="matrix-table-wrapper" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <table class="matrix-table" style="border-collapse: collapse; min-width: 100%; font-size: 14px;">
+                                <thead>
+                                    <tr>
+                                        <th style="position: sticky; left: 0; background: #f8fafc; z-index: 3; min-width: 130px; padding: 10px 8px; border: 1px solid #e2e8f0; font-weight: 600;">指标 \ 周期</th>
+                                        <th v-for="p in mrpMatrixPeriodHeaders" :key="p" style="padding: 8px 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600; min-width: 80px; text-align: center;">
+                                            周期{{ p }}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="row in mrpMatrixTransposed" :key="row.fieldKey">
+                                        <td style="position: sticky; left: 0; background: #fff; z-index: 2; padding: 10px 12px; border: 1px solid #e2e8f0; font-weight: 600; white-space: nowrap;">{{ row.field }}</td>
+                                        <td v-for="p in mrpMatrixPeriodHeaders" :key="p"
+                                            :style="{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center',
+                                                backgroundColor: row.fieldKey === 'netReq' && row['p' + p] > 0 ? '#fef0f0' :
+                                                (row.fieldKey === 'plannedOrderReceipts' || row.fieldKey === 'plannedOrderRelease') && row['p' + p] > 0 ? '#f0f9eb' : 'transparent' }">
+                                            <span v-if="row['p' + p] != null && row['p' + p] !== 0" class="bold-val">{{ row['p' + p] }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <el-empty v-else-if="!mrpMatrixLoading && mrpMatrixMaterial" description="暂无数据，请先执行MRP运算或检查物料编码"></el-empty>
+                        <el-empty v-else-if="!mrpMatrixLoading && !mrpMatrixMaterial" description="请在上方选择物料并点击刷新"></el-empty>
+                    </div>
+                </div>
+
+                <!-- 订货计划 -->
+                <div v-if="activeMenu === 'result'">
+                    <div class="card-box">
+                        <div class="page-title">订货计划</div>
+                        <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
+                            <el-select v-model="filterMaterial" placeholder="筛选物料" clearable @change="loadResults" style="width: 160px;">
+                                <el-option label="全部" value=""></el-option>
+                                <el-option v-for="m in materials" :key="m.materialCode" :label="m.materialCode" :value="m.materialCode"></el-option>
+                            </el-select>
+                            <el-button type="success" @click="exportExcel">导出Excel</el-button>
+                        </div>
+                        <el-table :data="results" border>
+                            <el-table-column prop="materialCode" label="物料" width="100"></el-table-column>
+                            <el-table-column prop="period" label="下达周期" width="100"></el-table-column>
+                            <el-table-column prop="plannedIn" label="订货量" width="100"></el-table-column>
+                            <el-table-column prop="releasePeriod" label="产出周期" width="100"></el-table-column>
+                            <el-table-column prop="grossReq" label="毛需求" width="100"></el-table-column>
+                            <el-table-column prop="netReq" label="净需求" width="100"></el-table-column>
+                        </el-table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 物料编辑对话框 -->
+    <el-dialog v-model="materialDialogVisible" :title="materialDialogTitle" width="550px">
+        <el-form :model="currentMaterial" label-width="100px">
+            <el-form-item label="物料编码">
+                <el-input v-model="currentMaterial.materialCode" :disabled="!!editingMaterialId"></el-input>
+            </el-form-item>
+            <el-form-item label="物料名称">
+                <el-input v-model="currentMaterial.materialName"></el-input>
+            </el-form-item>
+            <el-form-item label="期初库存">
+                <el-input-number v-model="currentMaterial.initStock" :min="0"></el-input-number>
+            </el-form-item>
+            <el-form-item label="安全库存">
+                <el-input-number v-model="currentMaterial.safetyStock" :min="0"></el-input-number>
+            </el-form-item>
+            <el-form-item label="已分配量">
+                <el-input-number v-model="currentMaterial.allocated" :min="0"></el-input-number>
+            </el-form-item>
+            <el-form-item label="批量规则">
+                <el-select v-model="currentMaterial.lotRule">
+                    <el-option label="批对批" value="LFL"></el-option>
+                    <el-option label="固定批量" value="FOQ"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="批量值">
+                <el-input-number v-model="currentMaterial.lotSize" :min="0"></el-input-number>
+            </el-form-item>
+            <el-form-item label="提前期">
+                <el-input-number v-model="currentMaterial.leadTime" :min="1"></el-input-number>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="materialDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveMaterial">保存</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- BOM编辑对话框 -->
+    <el-dialog v-model="bomDialogVisible" :title="bomDialogTitle" width="500px">
+        <el-form :model="currentBom" label-width="100px">
+            <el-form-item label="父件编码">
+                <el-select v-model="currentBom.parentCode" filterable>
+                    <el-option v-for="m in materials" :key="m.materialCode" :label="m.materialCode" :value="m.materialCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="子件编码">
+                <el-select v-model="currentBom.childCode" filterable>
+                    <el-option v-for="m in materials" :key="m.materialCode" :label="m.materialCode" :value="m.materialCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="单位用量">
+                <el-input-number v-model="currentBom.qty" :min="1"></el-input-number>
+            </el-form-item>
+            <el-form-item label="BOM层级">
+                <el-input-number v-model="currentBom.level" :min="1"></el-input-number>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="bomDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveBom">保存</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- MPS编辑对话框 -->
+    <el-dialog v-model="mpsDialogVisible" :title="mpsDialogTitle" width="500px">
+        <el-form :model="currentMps" label-width="100px">
+            <el-form-item label="物料编码">
+                <el-select v-model="currentMps.materialCode" filterable>
+                    <el-option v-for="m in materials" :key="m.materialCode" :label="m.materialCode" :value="m.materialCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="需求周期">
+                <el-input-number v-model="currentMps.period" :min="1" :max="52"></el-input-number>
+            </el-form-item>
+            <el-form-item label="毛需求量">
+                <el-input-number v-model="currentMps.grossReq" :min="1"></el-input-number>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="mpsDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveMps">保存</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- MRP矩阵视图对话框 -->
+    <el-dialog v-model="matrixDialogVisible" title="MRP矩阵视图" width="92%" top="15px" :close-on-click-modal="false">
+        <div v-loading="matrixLoading" style="min-height: 300px;">
+            <div v-if="!matrixLoading && matrixMaterials.length > 0" style="margin-bottom: 12px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="display:inline-block;width:14px;height:14px;background:#ef4444;border-radius:3px;"></span> 毛需求</div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="display:inline-block;width:14px;height:14px;background:#f59e0b;border-radius:3px;"></span> 净需求</div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="display:inline-block;width:14px;height:14px;background:#10b981;border-radius:3px;"></span> 计划投入</div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="display:inline-block;width:14px;height:14px;background:#6366f1;border-radius:3px;"></span> 期末库存</div>
+                <el-button type="primary" size="small" @click="exportMatrix" style="margin-left: auto;">导出Excel</el-button>
+            </div>
+            <div v-if="matrixLoading" style="text-align: center; padding: 60px;">
+                <p>正在加载矩阵数据，请稍候...</p>
+            </div>
+            <div v-else-if="!matrixMaterials.length" style="text-align: center; padding: 60px; color: #999;">
+                <p>暂无数据，请先执行MRP运算</p>
+            </div>
+            <div v-else class="matrix-table-wrapper" style="overflow: auto; max-height: 65vh; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <table class="matrix-table" style="border-collapse: collapse; min-width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="position: sticky; left: 0; background: #f8fafc; z-index: 3; min-width: 90px; padding: 10px 8px; border: 1px solid #e2e8f0; font-weight: 600;">物料</th>
+                            <th v-for="p in matrixPeriods" :key="p" style="padding: 8px 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600; min-width: 100px;">
+                                周期{{ p }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="code in matrixMaterials" :key="code">
+                            <td style="position: sticky; left: 0; background: #fff; z-index: 2; padding: 8px; border: 1px solid #e2e8f0; font-weight: 600; text-align: center;">{{ code }}</td>
+                            <td v-for="p in matrixPeriods" :key="p" style="padding: 6px 8px; border: 1px solid #e2e8f0; text-align: center; font-size: 13px; line-height: 1.6;">
+                                <template v-if="matrixData[code]">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 2px;">
+                                        <span style="color: #ef4444; font-weight: 500;">{{ matrixData[code].gross[p-1] }}</span>
+                                        <span style="color: #94a3b8;">/</span>
+                                        <span style="color: #f59e0b; font-weight: 500;">{{ matrixData[code].net[p-1] }}</span>
+                                        <span style="color: #94a3b8;">/</span>
+                                        <span style="color: #10b981; font-weight: 500;">{{ matrixData[code].plannedIn[p-1] }}</span>
+                                    </div>
+                                    <div style="color: #6366f1; font-size: 11px; margin-top: 2px;">库存: {{ matrixData[code].endInv[p-1] }}</div>
+                                </template>
+                                <span v-else style="color: #ccc;">-</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <template #footer>
+            <el-button @click="matrixDialogVisible = false">关闭</el-button>
+            <el-button type="primary" @click="exportMatrix" v-if="matrixMaterials.length > 0">导出Excel</el-button>
+        </template>
+    </el-dialog>
+</div>
+
+<script>
+    const { ref, reactive, onMounted, computed } = Vue;
+    const app = {
+        setup() {
+            // 登录相关状态
+            const isLoggedIn = ref(false);
+            const currentUser = ref({ username: '' });
+            const loginForm = reactive({ username: 'admin', password: '123456' });
+            const passwordVisible = ref(false);
+            const loggingIn = ref(false);
+            const loginError = ref('');
+            const rememberMe = ref(false);
+            
+            // 菜单
+            const activeMenu = ref('dashboard');
+            
+            // 数据
+            const materials = ref([]);
+            const boms = ref([]);
+            const mpsList = ref([]);
+            const results = ref([]);
+            const filterMaterial = ref('');
+            const mrpRunning = ref(false);
+            const mrpResultMsg = ref('');
+            const lastMrpTime = ref('');
+            const mpsChanged = ref(false);
+
+            // 矩阵视图状态
+            const matrixDialogVisible = ref(false);
+            const matrixPeriods = ref([]);
+            const matrixMaterials = ref([]);
+            const matrixData = ref({});
+            const matrixLoading = ref(false);
+
+            // MRP矩阵明细视图状态
+            const mrpMatrixMaterial = ref('');
+            const mrpMatrixMaterialName = ref('');
+            const mrpMatrixDetails = ref([]);
+            const mrpMatrixTransposed = ref([]);      // 转置后的表格数据
+            const mrpMatrixPeriodHeaders = ref([]);   // 周期列表（作为列头）
+            const mrpMatrixTotalPeriods = ref(0);
+            const mrpMatrixLoading = ref(false);
+            
+            // 物料对话框
+            const materialDialogVisible = ref(false);
+            const materialDialogTitle = ref('');
+            const currentMaterial = ref({});
+            const editingMaterialId = ref(null);
+            
+            // BOM对话框
+            const bomDialogVisible = ref(false);
+            const bomDialogTitle = ref('');
+            const currentBom = ref({});
+            const editingBomId = ref(null);
+            
+            // MPS对话框
+            const mpsDialogVisible = ref(false);
+            const mpsDialogTitle = ref('');
+            const currentMps = ref({});
+            const editingMpsId = ref(null);
+            
+            const baseUrl = '/api';
+            
+            const materialsCount = computed(() => materials.value.length);
+            const bomsCount = computed(() => boms.value.length);
+            const mpsCount = computed(() => mpsList.value.length);
+            
+            // 登录方法
+            const handleLogin = async () => {
+                loggingIn.value = true;
+                loginError.value = '';
+                try {
+                    const res = await axios.post(baseUrl + '/login', loginForm);
+                    if (res.data.success) {
+                        isLoggedIn.value = true;
+                        currentUser.value = { username: res.data.username };
+                        if (rememberMe.value) {
+                            localStorage.setItem('savedUser', loginForm.username);
+                            localStorage.setItem('savedPwd', loginForm.password);
+                        } else {
+                            localStorage.removeItem('savedUser');
+                            localStorage.removeItem('savedPwd');
+                        }
+                        loadMaterials();
+                        loadBoms();
+                        loadMps();
+                        loadResults();
+                    } else {
+                        loginError.value = res.data.message || '登录失败';
+                    }
+                } catch (err) {
+                    loginError.value = '网络错误，请检查后端服务';
+                } finally {
+                    loggingIn.value = false;
+                }
+            };
+            
+            const togglePasswordVisibility = () => {
+                passwordVisible.value = !passwordVisible.value;
+            };
+            
+            const handleLogout = () => {
+                isLoggedIn.value = false;
+                currentUser.value = { username: '' };
+            };
+            
+            const loadMaterials = async () => {
+                const res = await axios.get(baseUrl + '/materials');
+                materials.value = res.data;
+            };
+            const loadBoms = async () => {
+                const res = await axios.get(baseUrl + '/boms');
+                boms.value = res.data;
+            };
+            const loadMps = async () => {
+                const res = await axios.get(baseUrl + '/mps');
+                mpsList.value = res.data;
+            };
+            const loadResults = async () => {
+                const url = filterMaterial.value ? baseUrl + '/results?materialCode=' + filterMaterial.value : baseUrl + '/results';
+                const res = await axios.get(url);
+                results.value = res.data;
+            };
+            
+            const runMrp = async () => {
+                mrpRunning.value = true;
+                mrpResultMsg.value = '';
+                try {
+                    await axios.post(baseUrl + '/run-mrp');
+                    mrpResultMsg.value = 'MRP运算完成！请查看订货计划。';
+                    mpsChanged.value = false;
+                    lastMrpTime.value = new Date().toLocaleString();
+                    await loadResults();
+                } catch (err) {
+                    ElementPlus.ElMessage.error('运算失败: ' + err.message);
+                } finally {
+                    mrpRunning.value = false;
+                }
+            };
+            
+            const exportExcel = () => {
+                window.open(baseUrl + '/export');
+            };
+         // 导出物料（使用 a 标签，避免被拦截）
+            const exportMaterials = () => {
+                const link = document.createElement('a');
+                link.href = baseUrl + '/export-materials';
+                link.download = '物料主数据.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // 导出 BOM
+            const exportBoms = () => {
+                const link = document.createElement('a');
+                link.href = baseUrl + '/export-boms';
+                link.download = 'BOM结构.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // 导出 MPS
+            const exportMps = () => {
+                const link = document.createElement('a');
+                link.href = baseUrl + '/export-mps';
+                link.download = '主生产计划.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+            
+            // 物料CRUD
+            const openMaterialDialog = (row) => {
+                if (row) {
+                    currentMaterial.value = { ...row };
+                    editingMaterialId.value = row.materialCode;
+                    materialDialogTitle.value = '编辑物料';
+                } else {
+                    currentMaterial.value = { materialCode: '', materialName: '', initStock: 0, safetyStock: 0, allocated: 0, lotRule: 'LFL', lotSize: 0, leadTime: 1 };
+                    editingMaterialId.value = null;
+                    materialDialogTitle.value = '新增物料';
+                }
+                materialDialogVisible.value = true;
+            };
+            const saveMaterial = async () => {
+                try {
+                    await axios.post(baseUrl + '/materials', currentMaterial.value);
+                    ElementPlus.ElMessage.success('保存成功');
+                    materialDialogVisible.value = false;
+                    loadMaterials();
+                } catch (err) {
+                    ElementPlus.ElMessage.error('保存失败: ' + err.message);
+                }
+            };
+            const deleteMaterial = async (code) => {
+                await ElementPlus.ElMessageBox.confirm('确定删除该物料吗？', '提示', { type: 'warning' });
+                await axios.delete(baseUrl + '/materials/' + code);
+                ElementPlus.ElMessage.success('删除成功');
+                loadMaterials();
+            };
+            
+            // BOM CRUD
+            const openBomDialog = (row) => {
+                if (row) {
+                    currentBom.value = { ...row };
+                    editingBomId.value = row.id;
+                    bomDialogTitle.value = '编辑BOM';
+                } else {
+                    currentBom.value = { parentCode: '', childCode: '', qty: 1, level: 1 };
+                    editingBomId.value = null;
+                    bomDialogTitle.value = '新增BOM';
+                }
+                bomDialogVisible.value = true;
+            };
+            const saveBom = async () => {
+                try {
+                    await axios.post(baseUrl + '/boms', currentBom.value);
+                    ElementPlus.ElMessage.success('保存成功');
+                    bomDialogVisible.value = false;
+                    loadBoms();
+                } catch (err) {
+                    ElementPlus.ElMessage.error('保存失败: ' + err.message);
+                }
+            };
+            const deleteBom = async (id) => {
+                await ElementPlus.ElMessageBox.confirm('确定删除该BOM条目？', '提示', { type: 'warning' });
+                await axios.delete(baseUrl + '/boms/' + id);
+                ElementPlus.ElMessage.success('删除成功');
+                loadBoms();
+            };
+            
+            // MPS CRUD
+            const openMpsDialog = (row) => {
+                if (row) {
+                    currentMps.value = { ...row };
+                    editingMpsId.value = row.id;
+                    mpsDialogTitle.value = '编辑MPS';
+                } else {
+                    currentMps.value = { materialCode: '', period: 1, grossReq: 0 };
+                    editingMpsId.value = null;
+                    mpsDialogTitle.value = '新增MPS';
+                }
+                mpsDialogVisible.value = true;
+            };
+            const saveMps = async () => {
+                try {
+                    await axios.post(baseUrl + '/mps', currentMps.value);
+                    ElementPlus.ElMessage.success('保存成功');
+                    mpsDialogVisible.value = false;
+                    loadMps();
+                    mpsChanged.value = true;
+                } catch (err) {
+                    ElementPlus.ElMessage.error('保存失败: ' + err.message);
+                }
+            };
+            const deleteMps = async (id) => {
+                await ElementPlus.ElMessageBox.confirm('确定删除该MPS需求？', '提示', { type: 'warning' });
+                await axios.delete(baseUrl + '/mps/' + id);
+                ElementPlus.ElMessage.success('删除成功');
+                loadMps();
+                mpsChanged.value = true;
+            };
+            
+            // 打开MRP矩阵视图
+            const openMatrixView = async () => {
+                matrixDialogVisible.value = true;
+                matrixLoading.value = true;
+                matrixPeriods.value = [];
+                matrixMaterials.value = [];
+                matrixData.value = {};
+                try {
+                    const res = await axios.get(baseUrl + '/mrp-matrix');
+                    matrixPeriods.value = res.data.periods || [];
+                    matrixMaterials.value = res.data.materials || [];
+                    matrixData.value = res.data.data || {};
+                } catch (err) {
+                    ElementPlus.ElMessage.error('加载矩阵数据失败，请先执行MRP运算: ' + err.message);
+                } finally {
+                    matrixLoading.value = false;
+                }
+            };
+
+            // 导出矩阵为Excel（使用SheetJS）
+            const exportMatrix = () => {
+                if (!matrixMaterials.value.length) {
+                    ElementPlus.ElMessage.warning('无数据可导出');
+                    return;
+                }
+                const periods = matrixPeriods.value;
+                const materials = matrixMaterials.value;
+                const data = matrixData.value;
+
+                // 表头：物料编码 + 每个周期4列（毛需求、净需求、计划投入、期末库存）
+                const header1 = ['物料编码'];
+                const header2 = [''];
+                periods.forEach(p => {
+                    header1.push('周期' + p, '', '', '');
+                    header2.push('毛需求', '净需求', '计划投入', '期末库存');
+                });
+
+                const rows = [header1, header2];
+                materials.forEach(code => {
+                    const row = [code];
+                    const cells = data[code];
+                    if (cells) {
+                        periods.forEach(p => {
+                            row.push(cells.gross[p-1], cells.net[p-1], cells.plannedIn[p-1], cells.endInv[p-1]);
+                        });
+                    }
+                    rows.push(row);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                // 合并周期表头单元格
+                const merges = [];
+                let col = 1;
+                periods.forEach(() => {
+                    merges.push({ s: { r: 0, c: col }, e: { r: 0, c: col + 3 } });
+                    col += 4;
+                });
+                ws['!merges'] = merges;
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'MRP矩阵');
+                XLSX.writeFile(wb, 'MRP矩阵视图.xlsx');
+                ElementPlus.ElMessage.success('导出成功');
+            };
+
+            // 加载MRP矩阵明细并转置（周期→列，指标→行）
+            const loadMrpMatrixDetail = async () => {
+                if (!mrpMatrixMaterial.value) {
+                    ElementPlus.ElMessage.warning('请先选择物料');
+                    return;
+                }
+                mrpMatrixLoading.value = true;
+                mrpMatrixDetails.value = [];
+                mrpMatrixTransposed.value = [];
+                mrpMatrixPeriodHeaders.value = [];
+                mrpMatrixMaterialName.value = '';
+                try {
+                    const res = await axios.get(baseUrl + '/mrp-detail/' + mrpMatrixMaterial.value);
+                    if (res.data.error) {
+                        ElementPlus.ElMessage.error(res.data.error);
+                        return;
+                    }
+                    mrpMatrixMaterialName.value = res.data.materialName || '';
+                    mrpMatrixDetails.value = res.data.details || [];
+                    mrpMatrixTotalPeriods.value = res.data.totalPeriods || 0;
+                    // 转置：每个指标一行，周期作为列
+                    const fields = [
+                        { key: 'grossReq', label: '毛需求' },
+                        { key: 'scheduledReceipts', label: '计划接收量' },
+                        { key: 'beginInventory', label: '期初可用库存' },
+                        { key: 'safetyStock', label: '安全库存' },
+                        { key: 'netReq', label: '净需求量' },
+                        { key: 'plannedOrderReceipts', label: '计划产出量' },
+                        { key: 'plannedOrderRelease', label: '计划投入量' },
+                        { key: 'releasePeriod', label: '计划下达周期' },
+                    ];
+                    const details = res.data.details || [];
+                    mrpMatrixPeriodHeaders.value = details.map(d => d.period);
+                    mrpMatrixTransposed.value = fields.map(f => {
+                        const row = { field: f.label, fieldKey: f.key };
+                        details.forEach(d => {
+                            row['p' + d.period] = d[f.key];
+                        });
+                        return row;
+                    });
+                } catch (err) {
+                    ElementPlus.ElMessage.error('加载MRP明细失败，请确认已执行MRP运算: ' + err.message);
+                } finally {
+                    mrpMatrixLoading.value = false;
+                }
+            };
+
+            const handleMenuSelect = (index) => {
+                activeMenu.value = index;
+            };
+            
+            // 加载记住的账号
+            onMounted(() => {
+                const savedUser = localStorage.getItem('savedUser');
+                const savedPwd = localStorage.getItem('savedPwd');
+                if (savedUser && savedPwd) {
+                    loginForm.username = savedUser;
+                    loginForm.password = savedPwd;
+                    rememberMe.value = true;
+                }
+            });
+            
+            return {
+                isLoggedIn, currentUser, loginForm, passwordVisible, loggingIn, loginError, rememberMe,
+                handleLogin, togglePasswordVisibility, handleLogout,
+                activeMenu, handleMenuSelect,
+                materials, boms, mpsList, results, filterMaterial,
+                materialsCount, bomsCount, mpsCount,
+                mrpRunning, mrpResultMsg, lastMrpTime, mpsChanged,
+                loadResults, runMrp, exportExcel,
+                exportMaterials,
+                exportBoms,
+                exportMps,
+                materialDialogVisible, materialDialogTitle, currentMaterial, editingMaterialId,
+                openMaterialDialog, saveMaterial, deleteMaterial,
+                bomDialogVisible, bomDialogTitle, currentBom, editingBomId,
+                openBomDialog, saveBom, deleteBom,
+                mpsDialogVisible, mpsDialogTitle, currentMps, editingMpsId,
+                openMpsDialog, saveMps, deleteMps,
+                matrixDialogVisible, matrixPeriods, matrixMaterials, matrixData, matrixLoading,
+                openMatrixView, exportMatrix,
+                mrpMatrixMaterial, mrpMatrixMaterialName, mrpMatrixDetails, mrpMatrixTransposed, mrpMatrixPeriodHeaders,
+                mrpMatrixTotalPeriods, mrpMatrixLoading, loadMrpMatrixDetail
+
+            };
+        }
+    };
+    Vue.createApp(app).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

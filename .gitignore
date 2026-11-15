@@ -1,0 +1,22 @@
+# Java / Maven
+target/
+bin/
+*.class
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.settings/
+.project
+.classpath
+.apt_generated/
+.apt_generated_tests/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
+application-local.properties
